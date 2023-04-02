@@ -72,11 +72,12 @@ app.post("/api/users/register", async (req, res) => {
       role,
     });
     const response = await user.save();
-    return res.status(200).json({
-      status: "success",
-      message: "User registered successfully",
-      data: response,
-    });
+    return res.render(login)
+    // status(200).json({
+    //   status: "success",
+    //   message: "User registered successfully",
+    //   data: response,
+    // });
   } catch (error) {
     console.log(error);
     return res.status(500).json(error);
@@ -119,7 +120,7 @@ app.post("/api/users/login", async (req, res) => {
         expiresIn: "1h",
       }
     );
-    return res.status(200).json({ data: response, token: jwtToken });
+    return res.render(success)
   } catch (error) {
     return res.status(500).json(error);
   }
@@ -161,7 +162,7 @@ app.post(
       return res.status(200).json({
         status: "success",
         message: "Invitation Accepted successfully",
-      });
+      }); 
     } catch (error) {
       console.log(error);
       return res.status(500).json(error);
