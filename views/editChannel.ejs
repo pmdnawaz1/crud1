@@ -1,0 +1,56 @@
+<!-- HTML code for the page -->
+<h1>Edit Channel Message</h1>
+
+<form id="edit-message-form">
+  <div>
+    <label for="channelName">Channel Name:</label>
+    <input type="text" id="channelName" name="channelName">
+  </div>
+  <div>
+    <label for="messageId">Message ID:</label>
+    <input type="text" id="messageId" name="messageId">
+  </div>
+  <div>
+    <label for="message">New Message:</label>
+    <input type="text" id="message" name="message">
+  </div>
+  <button type="submit" id="edit-message-btn">Edit Message</button>
+</form>
+
+<div id="message-status"></div>
+
+<script>
+  const form = document.getElementById('edit-message-form');
+  const btn = document.getElementById('edit-message-btn');
+  const status = document.getElementById('message-status');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const channelName = form.channelName.value;
+    const messageId = form.messageId.value;
+    const message = form.message.value;
+
+    try {
+      const response = await fetch('/api/users/edit-channel-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ channelName, messageId, message })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        status.innerText = result.message;
+      } else {
+        status.innerText = result.message || 'Error';
+      }
+    } catch (error) {
+      console.error(error);
+      status.innerText = 'Error';
+    }
+  });
+</script>

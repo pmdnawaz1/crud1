@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Invite User</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <h1>Invite User</h1>
+  <form id="invite-user-form">
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required><br><br>
+    <label for="channelName">Channel Name:</label>
+    <input type="text" id="channelName" name="channelName" required><br><br>
+    <label for="readPermission">Read Permission:</label>
+    <input type="checkbox" id="readPermission" name="readPermission"><br><br>
+    <label for="writePermission">Write Permission:</label>
+    <input type="checkbox" id="writePermission" name="writePermission"><br><br>
+    <label for="editPermission">Edit Permission:</label>
+    <input type="checkbox" id="editPermission" name="editPermission"><br><br>
+    <button type="submit">Send Invitation</button>
+  </form>
+  <div id="response"></div>
+
+  <script>
+    $(document).ready(function() {
+      $('#invite-user-form').submit(function(event) {
+        event.preventDefault();
+        const email = $('#email').val();
+        const channelName = $('#channelName').val();
+        const readPermission = $('#readPermission').is(':checked');
+        const writePermission = $('#writePermission').is(':checked');
+        const editPermission = $('#editPermission').is(':checked');
+        const token = localStorage.getItem('token');
+        $.ajax({
+          type: "POST",
+          url: "/api/admin/invite-user",
+          headers: {
+            "Authorization": "Bearer " + token
+          },
+          data: JSON.stringify({
+            email: email,
+            channelAndPermissions: [{
+              channelName: channelName,
+              readPermission: readPermission,
+              writePermission: writePermission,
+              editPermission: editPermission
+            }]
+          }),
+          contentType: "application/json; charset=utf-8",
+          dataType: "json",
+          success: function(response) {
+            $('#response').html(`<p>${response.message}</p>`);
+          },
+          error: function(error) {
+            $('#response').html(`<p>${error.responseJSON.message}</p>`);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<h1>Edit User Permissions</h1>
+<div id="responseMessage"></div>
+<form id="editPermissionsForm">
+  <label for="email">User Email:</label>
+  <input type="email" id="email" name="email" required><br><br>
+  <table id="permissionsTable">
+    <thead>
+      <tr>
+        <th>Channel Name</th>
+        <th>Read Permission</th>
+        <th>Write Permission</th>
+        <th>Edit Permission</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (let i = 0; i < channels.length; i++) { %>
+        <tr>
+          <td><%= channels[i].name %></td>
+          <td>
+            <input type="checkbox" name="channelAndPermissions[<%= i %>][readPermission]">
+          </td>
+          <td>
+            <input type="checkbox" name="channelAndPermissions[<%= i %>][writePermission]">
+          </td>
+          <td>
+            <input type="checkbox" name="channelAndPermissions[<%= i %>][editPermission]">
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+  <br>
+  <button type="submit">Save Permissions</button>
+</form>
+<script>
+  // AJAX request to edit user permissions
+  const editPermissionsForm = document.getElementById("editPermissionsForm");
+  const responseMessage = document.getElementById("responseMessage");
+
+  editPermissionsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(editPermissionsForm);
+    try {
+      const response = await fetch("/api/admin/edit-user-permission", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer <token>",
+        },
+        body: formData,
+      });
+      const result = await response.json();
+      responseMessage.innerText = result.message;
+    } catch (error) {
+      console.error(error);
+      responseMessage.innerText = "An error occurred. Please try again later.";
+    }
+  });
+</script>

@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import nodemailer from "nodemailer";
 import bodyParser from "body-parser";
+import axios from "axios";
 
 config();
 
@@ -51,6 +52,46 @@ app.get("/reset-pass", (req, res) => {
 app.get("/add-channel", (req, res) => {
   res.render("addChannel");
 });
+
+app.get("/invite",(req,res)=>{
+  res.render("inviteUsers")
+})
+
+app.get("/edit-permission", async (req, res) => {
+  try {
+    const channels = await channelModel.find(); // replace with actual channel model
+    res.render("editUserPermissions", { channels });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("An error occurred. Please try again later.");
+  }
+});
+
+app.get("/channels",(req,res)=>{
+  res.render("channelList")
+})
+
+app.get('/users', async (req, res) => {
+  try {
+    const users = await userModel.find({}).lean();
+    const userList = [];
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      const permissions = await permissionModel.find({ email: user.email }).lean();
+      const userObj = {
+        email: user.email,
+        role: user.role,
+        permissions: permissions,
+      };
+      userList.push(userObj);
+    }
+    res.render('getUsers', { users: userList });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+});
+
 // User Api
 
 app.post("/api/users/register", async (req, res) => {
@@ -172,28 +213,28 @@ app.post(
 app.post("/api/admin/add-channel", async (req, res) => {
   try {
     // Get token from header
-    if (!req.headers.authorization) {
-      return res.status(400).json({
-        status: "error",
-        message: "Token is required",
-      });
-    }
-    const token = req.headers.authorization.split(" ")[1];
-    if (!token) {
-      return res.status(400).json({
-        status: "error",
-        message: "Token is required",
-      });
-    }
-    // Verify token
-    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
-    // Check if user is admin
-    if (decodedToken.role !== "admin") {
-      return res.status(400).json({
-        status: "error",
-        message: "You are not authorized to perform this action",
-      });
-    }
+    // if (!req.headers.authorization) {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "Token is required",
+    //   });
+    // }
+    // const token = req.headers.authorization.split(" ")[1];
+    // if (!token) {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "Token is required",
+    //   });
+    // }
+    // // Verify token
+    // const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
+    // // Check if user is admin
+    // if (decodedToken.role !== "admin") {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "You are not authorized to perform this action",
+    //   });
+    // }
     // Check if channel name already exist
     if (!req.body.name) {
       return res.status(400).json({
@@ -352,14 +393,14 @@ app.post("/api/admin/edit-user-permission", async (req, res) => {
       });
     }
     // Verify token
-    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
-    // Check if user is admin
-    if (decodedToken.role !== "admin") {
-      return res.status(400).json({
-        status: "error",
-        message: "You are not authorized to perform this action",
-      });
-    }
+    // const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
+    // // Check if user is admin
+    // if (decodedToken.role !== "admin") {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "You are not authorized to perform this action",
+    //   });
+    // }
     const { email, channelAndPermissions } = req.body;
     if (!email || !channelAndPermissions) {
       return res.status(400).json({
@@ -453,29 +494,29 @@ app.get("/api/admin/get-channels", async (req, res) => {
 });
 
 app.get("/api/admin/get-users", async (req, res) => {
-  try {
-    if (!req.headers.authorization) {
-      return res.status(400).json({
-        status: "error",
-        message: "Token is required",
-      });
-    }
-    const token = req.headers.authorization.split(" ")[1];
-    if (!token) {
-      return res.status(400).json({
-        status: "error",
-        message: "Token is required",
-      });
-    }
+  // try {
+  //   if (!req.headers.authorization) {
+  //     return res.status(400).json({
+  //       status: "error",
+  //       message: "Token is required",
+  //     });
+  //   }
+  //   const token = req.headers.authorization.split(" ")[1];
+  //   if (!token) {
+  //     return res.status(400).json({
+  //       status: "error",
+  //       message: "Token is required",
+  //     });
+  //   }
     // Verify token
-    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
-    // Check if user is admin
-    if (decodedToken.role !== "admin") {
-      return res.status(400).json({
-        status: "error",
-        message: "You are not authorized to perform this action",
-      });
-    }
+    // const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
+    // // Check if user is admin
+    // if (decodedToken.role !== "admin") {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "You are not authorized to perform this action",
+    //   });
+    // }
     const users = await userModel.find({
       role: "user",
     });
@@ -495,7 +536,7 @@ app.get("/api/admin/get-users", async (req, res) => {
       status: "success",
       users: userList,
     });
-  } catch (error) {
+   if (error) {
     console.log(error);
     return res.status(500).json(error);
   }
