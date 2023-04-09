@@ -1,15 +1,67 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Channels</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      /* Basic styling for the messages */
+      .message {
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background-color: #eee;
+        border-radius: 0.5rem;
+      }
+
+      .message p {
+        margin: 0;
+      }
+
+      .message .meta {
+        font-size: 0.8rem;
+        color: #999;
+        margin-top: 0.5rem;
+      }
+
+      .message .sender {
+        font-weight: bold;
+      }
+
+      .message .timestamp {
+        margin-left: 1rem;
+      }
+    </style>
   </head>
   <body>
-    <h1>Channels:</h1>
+    <h1>Channel: <%= channelName %></h1>
     <ul>
       <% for (let i = 0; i < channels.length; i++) { %>
-        <li><%= channels[i].name %></li>
+      <li><%= channels[i].name %></li>
       <% } %>
     </ul>
+    <ul id="messages">
+      <% for (let i = 0; i < messages.length; i++) { %>
+      <li class="message">
+        <p>
+          <span class="sender"><%= messages[i].sender %>:</span> <%=
+          messages[i].message %>
+        </p>
+        <p class="meta">
+          <span class="timestamp"
+            ><%= messages[i].timestamp.toLocaleString() %></span
+          >
+        </p>
+      </li>
+      <% } %>
+    </ul>
+    <script>
+      $.ajax({
+        url: "/api/data",
+        dataType: "json",
+        success: function (data) {
+          console.log(data);
+        },
+      });
+    </script>
   </body>
 </html>

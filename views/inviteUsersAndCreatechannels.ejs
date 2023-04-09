@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Super Admin Dashboard</title>
+  </head>
+  <body>
+    <form id="invite-user-form">
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required /><br /><br />
+      <label for="channelName">Channel Name:</label>
+      <input
+        type="text"
+        id="channelName"
+        name="channelName"
+        required
+      /><br /><br />
+      <label for="readPermission">Read Permission:</label>
+      <input
+        type="checkbox"
+        id="readPermission"
+        name="readPermission"
+      /><br /><br />
+      <label for="writePermission">Write Permission:</label>
+      <input
+        type="checkbox"
+        id="writePermission"
+        name="writePermission"
+      /><br /><br />
+      <label for="editPermission">Edit Permission:</label>
+      <input
+        type="checkbox"
+        id="editPermission"
+        name="editPermission"
+      /><br /><br />
+      <button type="submit">Send Invitation</button>
+    </form>
+    <div id="response"></div>
+    <script>
+      $(document).ready(function () {
+        $("#invite-user-form").submit(function (event) {
+          event.preventDefault();
+          const email = $("#email").val();
+          const channelName = $("#channelName").val();
+          const readPermission = $("#readPermission").is(":checked");
+          const writePermission = $("#writePermission").is(":checked");
+          const editPermission = $("#editPermission").is(":checked");
+          const token = localStorage.getItem("token");
+          $.ajax({
+            type: "POST",
+            url: "/api/admin/invite-user",
+            headers: {
+              Authorization:
+                "Bearer " +
+                "aDrOSjgNjgoJQjyTd3Je7aJ5QEHzf7/vsH4F+h0l2PdfzUhwfgDBmR36dX/vcZbRw9o4ocrHoaSturQ21zXMqIFY+ea2FUd4uuBz17F1sRf8k5AXZ9SxiOFf",
+            },
+            data: JSON.stringify({
+              email: email,
+              channelAndPermissions: [
+                {
+                  channelName: channelName,
+                  readPermission: readPermission,
+                  writePermission: writePermission,
+                  editPermission: editPermission,
+                },
+              ],
+            }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function (response) {
+              $("#response").html(`<p>${response.message}</p>`);
+            },
+            error: function (error) {
+              $("#response").html(`<p>${error.responseJSON.message}</p>`);
+            },
+          });
+        });
+      });
+    </script>
+    <h2>Create Channel:</h2>
+    <form id="add-channel-form">
+      <label for="channel-name">Channel Name:</label>
+      <input type="text" id="channel-name" name="channelName" /><br />
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" /><br />
+      <input type="submit" value="Add Channel" />
+    </form>
+    <div id="message"></div>
+    <h2>Channel List</h2>
+    <ul id="channel-list"></ul>
+    <script>
+      $(document).ready(function () {
+        const token = localStorage.getItem("token");
+        if (!token) {
+        }
+        $("#add-channel-form").submit(function (event) {
+          event.preventDefault();
+          const name = $("#channel-name").val();
+          const email = $("#email").val();
+          $.ajax({
+            url: "/api/admin/add-channel",
+            type: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            data: {
+              name,
+            },
+            success: function (response) {
+              $("#message").html(`<p class="success">${response.message}</p>`);
+              $("#add-channel-form")[0].reset();
+              getChannels();
+            },
+            error: function (xhr, status, error) {
+              const response = JSON.parse(xhr.responseText);
+              $("#message").html(`<p class="error">${response.message}</p>`);
+            },
+          });
+        });
+        getChannels();
+      });
+      function getChannels() {
+        const token =
+          "aDrOSjgNjgoJQjyTd3Je7aJ5QEHzf7/vsH4F+h0l2PdfzUhwfgDBmR36dX/vcZbRw9o4ocrHoaSturQ21zXMqIFY+ea2FUd4uuBz17F1sRf8k5AXZ9SxiOFf";
+        $.ajax({
+          url: "/api/admin/get-channels",
+          type: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+
+          success: function (response) {
+            const channels = response.channels;
+            let channelListHtml = "";
+            channels.forEach(function (channel) {
+              channelListHtml += `<li>${channel.name}</li>`;
+            });
+            $("#channel-list").html(channelListHtml);
+          },
+          error: function (xhr, status, error) {
+            const response = JSON.parse(xhr.responseText);
+            $("#message").html(`<p class="error">${response.message}</p>`);
+          },
+        });
+      }
+      console.log(token);
+    </script>
+  </body>
+</html>

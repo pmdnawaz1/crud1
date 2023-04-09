@@ -1,47 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html>
+  <head>
+    <meta charset="UTF-8" />
     <title>Login</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  </head>
+  <body>
+    <h1>Login</h1>
+    <form method="POST" action="/api/users/login">
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required /><br />
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required /><br />
+
+      <input type="submit" value="Login" />
+    </form>
     <script>
+      $.ajax({
+        url: "/api/data",
+        dataType: "json",
+        success: function (data) {
+          console.log(data);
+        },
+      });
       function setToken(token) {
-        localStorage.setItem('aDrOSjgNjgoJQjyTd3Je7aJ5QEHzf7/vsH4F+h0l2PdfzUhwfgDBmR36dX/vcZbRw9o4ocrHoaSturQ21zXMqIFY+ea2FUd4uuBz17F1sRf8k5AXZ9SxiOFf', token);
+        localStorage.setItem("token", token);
       }
-    
-      const form = document.querySelector('form');
-      form.addEventListener('submit', async (event) => {
+
+      const form = document.querySelector("form");
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const response = await fetch('/api/users/login', {
-          method: 'POST',
+        const formData = new FormData(event.target);
+        const response = await fetch("/api/users/login", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({
+            email: formData.get("email"),
+            password: formData.get("password"),
+          }),
         });
-        const data = await response.json();
         if (response.ok) {
+          const data = await response.json();
           setToken(data.token);
-          window.location.href = '/add-channel';
+          window.location.href = "/channels"; // redirect to channels page
         } else {
-          alert(data.message);
+          const errorData = await response.json();
+          alert(errorData.message);
         }
       });
     </script>
-    
-</head>
-<body>
-<h1>Login</h1>
-<form action="/api/users/login" method="POST">
-  <label for="email">Email:</label>
-  <input type="email" id="email" name="email" required><br><br>
-  <label for="password">Password:</label>
-  <input type="password" id="password" name="password" required><br><br>
-  <button type="submit">Login</button>
-</form>
-
-</body>
+  </body>
 </html>

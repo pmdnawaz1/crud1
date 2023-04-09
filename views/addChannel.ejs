@@ -51,9 +51,11 @@
       function getChannels() {
         const token = localStorage.getItem("token");
         $.ajax({
+          
           url: "/api/get-channels",
           type: "GET",
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
             
           },

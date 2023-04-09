@@ -9,6 +9,8 @@ import mongoose from "mongoose";
 import nodemailer from "nodemailer";
 import bodyParser from "body-parser";
 import axios from "axios";
+import path from "path";
+const __dirname = path.resolve();
 
 config();
 
@@ -20,6 +22,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.set("view engine", "ejs");
+app.set("views", __dirname + "/views");
 
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -29,6 +32,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 const port = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(JSON.stringify({ message: "This is a JSON response." }));
   res.send("Hey welcome.");
 });
 
@@ -37,8 +42,8 @@ app.listen(port, () => {
 });
 
 // Ejs
-app.get('/register', (req, res) => {
-  res.render('register');
+app.get("/register", (req, res) => {
+  res.render("register");
 });
 
 app.get("/login", (req, res) => {
@@ -53,9 +58,9 @@ app.get("/add-channel", (req, res) => {
   res.render("addChannel");
 });
 
-app.get("/invite",(req,res)=>{
-  res.render("inviteUsers")
-})
+app.get("/invite", (req, res) => {
+  res.render("inviteUsers");
+});
 
 app.get("/edit-permission", async (req, res) => {
   try {
@@ -67,17 +72,33 @@ app.get("/edit-permission", async (req, res) => {
   }
 });
 
-app.get("/channels",(req,res)=>{
-  res.render("channelList")
-})
+// app.get('/channels', async (req, res) => {
+//   try {
+//     const channels = await channelModel.find();
+//     res.render('channelList', { channels: channels });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json(error);
+//   }
+// });
+app.get("/channels", async (req, res) => {
+  const channelName = req.params.channelName;
+  const channels = await channelModel.find();
+  const messages = await messageModel
+    .find({ channelName })
+    .sort({ timestamp: 1 });
+  res.render("channelList", { channelName, channels, messages });
+});
 
-app.get('/users', async (req, res) => {
+app.get("/users", async (req, res) => {
   try {
     const users = await userModel.find({}).lean();
     const userList = [];
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      const permissions = await permissionModel.find({ email: user.email }).lean();
+      const permissions = await permissionModel
+        .find({ email: user.email })
+        .lean();
       const userObj = {
         email: user.email,
         role: user.role,
@@ -85,11 +106,17 @@ app.get('/users', async (req, res) => {
       };
       userList.push(userObj);
     }
-    res.render('getUsers', { users: userList });
+    res.render("getUsers", { users: userList });
   } catch (error) {
     console.log(error);
     res.status(500).json(error);
   }
+});
+
+app.get("/invite-users-and-create-channels", async (req, res) => {
+  const users = await userModel.find();
+  const channels = await channelModel.find();
+  res.render("inviteUsersAndCreateChannels", { users }, { channels });
 });
 
 // User Api
@@ -113,11 +140,7 @@ app.post("/api/users/register", async (req, res) => {
       role,
     });
     const response = await user.save();
-    return res.status(200).json({
-      status: "success",
-      message: "User registered successfully",
-      data: response,
-    });
+    return res.redirect("/login");
   } catch (error) {
     console.log(error);
     return res.status(500).json(error);
@@ -127,42 +150,42 @@ app.post("/api/users/register", async (req, res) => {
 app.post("/api/users/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    // console.log(email, password);
-    if (!email || !password) {
-      return res.status(400).json({
-        status: "error",
-        message: "Email and password are required",
-      });
-    }
-    const response = await userModel.findOne({
-      $and: [
-        {
-          email,
-        },
-        {
-          password,
-        },
-      ],
-    });
-    if (!response) {
-      return res.status(400).json({
+
+    // check if user exists
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
         status: "error",
         message: "Invalid email or password",
       });
     }
-    const jwtToken = jwt.sign(
-      {
-        email: response.email,
-        role: response.role,
-      },
-      process.env.ACCESS_TOKEN,
-      {
-        expiresIn: "1h",
-      }
-    );
-    return res.status(200).json({ data: response, token: jwtToken });
+
+    // validate password
+    // const isPasswordValid = await bcrypt.compare(password, user.password);
+    // if (!isPasswordValid) {
+    //   return res.status(401).json({
+    //     status: "error",
+    //     message: "Invalid email or password",
+    //   });
+    // }
+
+    // create and sign JWT
+    const token = jwt.sign({ userId: user._id }, process.env.ACCESS_TOKEN, {
+      expiresIn: "1d",
+    });
+
+    // set JWT as cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    // redirect to channels page
+    res.redirect("/channels");
   } catch (error) {
-    return res.status(500).json(error);
+    console.error(error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
 
@@ -199,10 +222,8 @@ app.post(
         permission.invitationStatus = "accepted";
         await permission.save();
       }
-      return res.status(200).json({
-        status: "success",
-        message: "Invitation Accepted successfully",
-      }); 
+      res.flash("Success");
+      return res.redirect("/channels");
     } catch (error) {
       console.log(error);
       return res.status(500).json(error);
@@ -213,22 +234,22 @@ app.post(
 app.post("/api/admin/add-channel", async (req, res) => {
   try {
     // Get token from header
-    // if (!req.headers.authorization) {
-    //   return res.status(400).json({
-    //     status: "error",
-    //     message: "Token is required",
-    //   });
-    // }
-    // const token = req.headers.authorization.split(" ")[1];
-    // if (!token) {
-    //   return res.status(400).json({
-    //     status: "error",
-    //     message: "Token is required",
-    //   });
-    // }
-    // // Verify token
+    if (!req.headers.authorization) {
+      return res.status(400).json({
+        status: "error",
+        message: "Token is required",
+      });
+    }
+    const token = req.headers.authorization.split(" ")[1];
+    if (!token) {
+      return res.status(400).json({
+        status: "error",
+        message: "Token is required",
+      });
+    }
+    // Verify token
     // const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
-    // // Check if user is admin
+    // Check if user is admin
     // if (decodedToken.role !== "admin") {
     //   return res.status(400).json({
     //     status: "error",
@@ -256,14 +277,10 @@ app.post("/api/admin/add-channel", async (req, res) => {
       name: req.body.name,
     });
     const response = await channel.save();
-    return res.status(200).json({
-      status: "success",
-      message: "Channel added successfully",
-      data: response,
-    });
+    // res.flash("Channel added successfully")
+    return res.redirect("/channels");
   } catch (error) {
     console.log(error);
-    return res.status(500).json(error);
   }
 });
 
@@ -366,10 +383,7 @@ app.post("/api/admin/invite-user", async (req, res) => {
         console.log("Email sent: " + info.response);
       });
     }
-    return res.status(200).json({
-      status: "success",
-      message: "Invitation sent successfully",
-    });
+    return res.render("/getUsers");
   } catch (error) {
     console.log(error);
     return res.status(500).json(error);
@@ -393,14 +407,14 @@ app.post("/api/admin/edit-user-permission", async (req, res) => {
       });
     }
     // Verify token
-    // const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
-    // // Check if user is admin
-    // if (decodedToken.role !== "admin") {
-    //   return res.status(400).json({
-    //     status: "error",
-    //     message: "You are not authorized to perform this action",
-    //   });
-    // }
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
+    // Check if user is admin
+    if (decodedToken.role !== "admin") {
+      return res.status(400).json({
+        status: "error",
+        message: "You are not authorized to perform this action",
+      });
+    }
     const { email, channelAndPermissions } = req.body;
     if (!email || !channelAndPermissions) {
       return res.status(400).json({
@@ -448,10 +462,7 @@ app.post("/api/admin/edit-user-permission", async (req, res) => {
         await newPermission.save();
       }
     }
-    return res.status(200).json({
-      status: "success",
-      message: "Permission updated successfully",
-    });
+    return res.render("/getusers");
   } catch (error) {
     console.log(error);
     return res.status(500).json(error);
@@ -482,11 +493,7 @@ app.get("/api/admin/get-channels", async (req, res) => {
         message: "You are not authorized to perform this action",
       });
     }
-    const channels = await channelModel.find();
-    return res.status(200).json({
-      status: "success",
-      channels,
-    });
+    return res.status("/channels");
   } catch (error) {
     console.log(error);
     return res.status(500).json(error);
@@ -494,29 +501,29 @@ app.get("/api/admin/get-channels", async (req, res) => {
 });
 
 app.get("/api/admin/get-users", async (req, res) => {
-  // try {
-  //   if (!req.headers.authorization) {
-  //     return res.status(400).json({
-  //       status: "error",
-  //       message: "Token is required",
-  //     });
-  //   }
-  //   const token = req.headers.authorization.split(" ")[1];
-  //   if (!token) {
-  //     return res.status(400).json({
-  //       status: "error",
-  //       message: "Token is required",
-  //     });
-  //   }
+  try {
+    if (!req.headers.authorization) {
+      return res.status(400).json({
+        status: "error",
+        message: "Token is required",
+      });
+    }
+    const token = req.headers.authorization.split(" ")[1];
+    if (!token) {
+      return res.status(400).json({
+        status: "error",
+        message: "Token is required",
+      });
+    }
     // Verify token
-    // const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
-    // // Check if user is admin
-    // if (decodedToken.role !== "admin") {
-    //   return res.status(400).json({
-    //     status: "error",
-    //     message: "You are not authorized to perform this action",
-    //   });
-    // }
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN);
+    // Check if user is admin
+    if (decodedToken.role !== "admin") {
+      return res.status(400).json({
+        status: "error",
+        message: "You are not authorized to perform this action",
+      });
+    }
     const users = await userModel.find({
       role: "user",
     });
@@ -532,11 +539,8 @@ app.get("/api/admin/get-users", async (req, res) => {
       };
       userList.push(userObj);
     }
-    return res.status(200).json({
-      status: "success",
-      users: userList,
-    });
-   if (error) {
+    return res.redirect("users");
+  } catch (error) {
     console.log(error);
     return res.status(500).json(error);
   }
@@ -812,7 +816,4 @@ app.get("/api/users/edit-channel-message", async (req, res) => {
   }
 });
 
-
 //ejs
-
-
